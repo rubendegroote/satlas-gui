@@ -1,7 +1,6 @@
 from PyQt4 import QtCore,QtGui
 from satlas.analysisIO import save,load
 from PyQt4 import QtCore,QtGui
-import sys
 import matplotlib.pyplot as plt
 
 class Viewer(QtGui.QMainWindow):
@@ -32,7 +31,6 @@ class Viewer(QtGui.QMainWindow):
         self.view.setMaximumWidth(500)
         self.splitter.addWidget(self.view)
 
-
         self.tabs = QtGui.QTabWidget()
         self.splitter.addWidget(self.tabs)
 
@@ -52,40 +50,39 @@ class Viewer(QtGui.QMainWindow):
         self.make_analysis_view()
 
     def make_analysis_view(self):
-        print(self.analysis._dataPaths)
-        for n,s in sorted(self.analysis.items()):
+        for data_unit in self.analysis.data_units:
             try:
-                self.make_approach_oVerview(n,s)
+                self.make_approach_overview(data_unit)
             except FileNotFoundError:
-                for i,p in enumerate(self.analysis._dataPaths):
+                for i,p in enumerate(data_unit.files):
                     error = QtGui.QErrorMessage()
                     error.showMessage('Data File not found. Original location: {}'.format(p))
                     error.exec_()
 
                     filename = QtGui.QFileDialog.getOpenFileName(
                             self, 'Select missing data file', '')
-                    self.analysis._dataPaths[i] = filename
+                    data_unit.files[i] = filename
                     save(self.analysis,self.analysisName)
 
                 try:
-                    self.make_approach_oVerview()
+                    self.make_approach_overview()
                 except FileNotFoundError as e:
                     error = QtGui.QErrorMessage()
                     error.showMessage(str(e))
                     error.exec_()
 
-    def make_approach_oVerview(self,n,s):
-        fig, ax = self.analysis.plot_spectrum(n,show=False)
+    def make_approach_overview(self,data_unit):
+        fig, ax = data_unit.plot(show=False)
         self.figs.append((fig,ax))                
-        self.tabs.addTab(ApproachOverview(s,fig),n)
+        self.tabs.addTab(ApproachOverview(data_unit,fig),data_unit.name)
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 class ApproachOverview(QtGui.QSplitter):
-    def __init__(self,spectrum,fig):
+    def __init__(self,data_unit,fig):
         super(ApproachOverview,self).__init__()
         
-        self.spectrum = spectrum
+        self.spectrum = data_unit.spectrum
 
         self.parWidget = QtGui.QTableWidget()
         self.addWidget(self.parWidget)
@@ -109,9 +106,3 @@ class ApproachOverview(QtGui.QSplitter):
             self.parWidget.setItem(i,0,QtGui.QTableWidgetItem(n))
             self.parWidget.setItem(i,1,QtGui.QTableWidgetItem(str(v)))
             self.parWidget.setItem(i,2,QtGui.QTableWidgetItem(str(ve)))
-
-
-if __name__ == "__main__":
-    app = QtGui.QApplication(sys.argv)
-    m = Viewer()
-    sys.exit(app.exec_())
